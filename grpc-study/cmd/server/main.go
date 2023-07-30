@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	hello "grpc-study/pkg/grpc"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -34,6 +36,25 @@ func (s *MyServiceServer) HelloServerStream(req *hello.HelloRequest, stream hell
 		time.Sleep(time.Second * 1)
 	}
 	return nil
+}
+func (s *MyServiceServer) HelloClientStream(stream hello.GreetingService_HelloClientStreamServer) error {
+	list := make([]string, 0)
+
+	for {
+		req, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			log.Printf("end of stream")
+			break
+		}
+		if err != nil {
+			return err
+		}
+		log.Printf("request: %v", req)
+		list = append(list, req.GetName())
+	}
+	return stream.SendAndClose(&hello.HelloResponse{
+		Message: fmt.Sprintf("Hello, %v!", list),
+	})
 }
 
 func NewServiceServer() *MyServiceServer {
