@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"time"
 )
 
 type MyServiceServer struct {
@@ -20,6 +21,19 @@ func (s *MyServiceServer) Hello(ctx context.Context, req *hello.HelloRequest) (*
 	return &hello.HelloResponse{
 		Message: fmt.Sprintf("Hello, %s!", req.GetName()),
 	}, nil
+}
+
+func (s *MyServiceServer) HelloServerStream(req *hello.HelloRequest, stream hello.GreetingService_HelloServerStreamServer) error {
+	resCount := 5
+	for i := 0; i < resCount; i++ {
+		if err := stream.Send(&hello.HelloResponse{
+			Message: fmt.Sprintf("[%d] Hello, %s!", i, req.GetName()),
+		}); err != nil {
+			return err
+		}
+		time.Sleep(time.Second * 1)
+	}
+	return nil
 }
 
 func NewServiceServer() *MyServiceServer {
