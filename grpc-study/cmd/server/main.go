@@ -57,6 +57,26 @@ func (s *MyServiceServer) HelloClientStream(stream hello.GreetingService_HelloCl
 	})
 }
 
+func (s *MyServiceServer) HelloBiDiStream(stream hello.GreetingService_HelloBiDiStreamServer) error {
+	for {
+		req, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			log.Printf("end of stream")
+			break
+		}
+		if err != nil {
+			return err
+		}
+		log.Printf("request: %v", req)
+		if err := stream.Send(&hello.HelloResponse{
+			Message: fmt.Sprintf("Hello, %s!", req.GetName()),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func NewServiceServer() *MyServiceServer {
 	return &MyServiceServer{}
 }

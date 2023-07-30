@@ -25,6 +25,7 @@ type GreetingServiceClient interface {
 	Hello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
 	HelloServerStream(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (GreetingService_HelloServerStreamClient, error)
 	HelloClientStream(ctx context.Context, opts ...grpc.CallOption) (GreetingService_HelloClientStreamClient, error)
+	HelloBiDiStream(ctx context.Context, opts ...grpc.CallOption) (GreetingService_HelloBiDiStreamClient, error)
 }
 
 type greetingServiceClient struct {
@@ -110,6 +111,37 @@ func (x *greetingServiceHelloClientStreamClient) CloseAndRecv() (*HelloResponse,
 	return m, nil
 }
 
+func (c *greetingServiceClient) HelloBiDiStream(ctx context.Context, opts ...grpc.CallOption) (GreetingService_HelloBiDiStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GreetingService_ServiceDesc.Streams[2], "/myapp.GreetingService/HelloBiDiStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &greetingServiceHelloBiDiStreamClient{stream}
+	return x, nil
+}
+
+type GreetingService_HelloBiDiStreamClient interface {
+	Send(*HelloRequest) error
+	Recv() (*HelloResponse, error)
+	grpc.ClientStream
+}
+
+type greetingServiceHelloBiDiStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *greetingServiceHelloBiDiStreamClient) Send(m *HelloRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *greetingServiceHelloBiDiStreamClient) Recv() (*HelloResponse, error) {
+	m := new(HelloResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // GreetingServiceServer is the server API for GreetingService service.
 // All implementations must embed UnimplementedGreetingServiceServer
 // for forward compatibility
@@ -117,6 +149,7 @@ type GreetingServiceServer interface {
 	Hello(context.Context, *HelloRequest) (*HelloResponse, error)
 	HelloServerStream(*HelloRequest, GreetingService_HelloServerStreamServer) error
 	HelloClientStream(GreetingService_HelloClientStreamServer) error
+	HelloBiDiStream(GreetingService_HelloBiDiStreamServer) error
 	mustEmbedUnimplementedGreetingServiceServer()
 }
 
@@ -132,6 +165,9 @@ func (UnimplementedGreetingServiceServer) HelloServerStream(*HelloRequest, Greet
 }
 func (UnimplementedGreetingServiceServer) HelloClientStream(GreetingService_HelloClientStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method HelloClientStream not implemented")
+}
+func (UnimplementedGreetingServiceServer) HelloBiDiStream(GreetingService_HelloBiDiStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method HelloBiDiStream not implemented")
 }
 func (UnimplementedGreetingServiceServer) mustEmbedUnimplementedGreetingServiceServer() {}
 
@@ -211,6 +247,32 @@ func (x *greetingServiceHelloClientStreamServer) Recv() (*HelloRequest, error) {
 	return m, nil
 }
 
+func _GreetingService_HelloBiDiStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GreetingServiceServer).HelloBiDiStream(&greetingServiceHelloBiDiStreamServer{stream})
+}
+
+type GreetingService_HelloBiDiStreamServer interface {
+	Send(*HelloResponse) error
+	Recv() (*HelloRequest, error)
+	grpc.ServerStream
+}
+
+type greetingServiceHelloBiDiStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *greetingServiceHelloBiDiStreamServer) Send(m *HelloResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *greetingServiceHelloBiDiStreamServer) Recv() (*HelloRequest, error) {
+	m := new(HelloRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // GreetingService_ServiceDesc is the grpc.ServiceDesc for GreetingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -232,6 +294,12 @@ var GreetingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "HelloClientStream",
 			Handler:       _GreetingService_HelloClientStream_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "HelloBiDiStream",
+			Handler:       _GreetingService_HelloBiDiStream_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},
